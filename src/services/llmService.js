@@ -4,7 +4,7 @@
 // 魔搭API配置
 const MODELSCOPE_CONFIG = {
   baseURL: 'https://api-inference.modelscope.cn/v1',
-  model: 'Qwen/Qwen3-8B',
+  model: 'deepseek-ai/DeepSeek-V3',
   apiKey: 'ms-150d583e-ed00-46d3-ab35-570f03555599'
 }
 
