@@ -1,25 +1,16 @@
 // 魔搭LLM处理服务
-// 使用魔搭平台的Qwen3-32B模型
+// 使用魔搭平台的Qwen2.5-7B-Instruct模型
 
 // 魔搭API配置
 const MODELSCOPE_CONFIG = {
-  baseURL: import.meta.env.VITE_MODELSCOPE_BASE_URL || 'https://api-inference.modelscope.cn/v1',
-  model: import.meta.env.VITE_MODELSCOPE_MODEL || 'Qwen/Qwen3-32B',
-  apiKey: import.meta.env.VITE_MODELSCOPE_API_KEY || 'ms-150d583e-ed00-46d3-ab35-570f03555599',
-  maxRetries: parseInt(import.meta.env.VITE_API_MAX_RETRIES) || 3,
-  requestTimeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000
+  baseURL: 'https://api-inference.modelscope.cn/v1',
+  model: 'Qwen/Qwen3-8B',
+  apiKey: 'ms-150d583e-ed00-46d3-ab35-570f03555599'
 }
 
-// 睡眠函数用于重试延迟
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
-
-// 调用魔搭API的通用函数（带重试和超时机制）
-const callModelScopeAPI = async (messages, temperature = 0.7, retryCount = 0) => {
+// 调用魔搭API的通用函数
+const callModelScopeAPI = async (messages, temperature = 0.7) => {
   try {
-    // 创建AbortController用于超时控制
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), MODELSCOPE_CONFIG.requestTimeout)
-
     const response = await fetch(`${MODELSCOPE_CONFIG.baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -30,65 +21,20 @@ const callModelScopeAPI = async (messages, temperature = 0.7, retryCount = 0) =>
         model: MODELSCOPE_CONFIG.model,
         messages: messages,
         temperature: temperature,
-        max_tokens: 3000,
-        top_p: 0.9,
+        max_tokens: 2000,
         stream: false
-      }),
-      signal: controller.signal
+      })
     })
 
-    clearTimeout(timeoutId)
-
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorText}`)
+      throw new Error(`API调用失败: ${response.status} ${response.statusText}`)
     }
 
     const data = await response.json()
-    
-    // 验证响应格式
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('API响应格式错误')
-    }
-
     return data.choices[0].message.content
   } catch (error) {
-    console.error(`魔搭API调用错误 (尝试 ${retryCount + 1}/${MODELSCOPE_CONFIG.maxRetries}):`, error)
-    
-    // 判断是否需要重试
-    const shouldRetry = (
-      retryCount < MODELSCOPE_CONFIG.maxRetries - 1 &&
-      (
-        error.name === 'AbortError' || // 超时
-        error.message.includes('网络') || // 网络错误
-        error.message.includes('500') || // 服务器错误
-        error.message.includes('502') || // 网关错误
-        error.message.includes('503') || // 服务不可用
-        error.message.includes('504')    // 网关超时
-      )
-    )
-
-    if (shouldRetry) {
-      const delay = Math.pow(2, retryCount) * 1000 // 指数退避
-      console.log(`${delay}ms后进行第${retryCount + 2}次尝试...`)
-      await sleep(delay)
-      return callModelScopeAPI(messages, temperature, retryCount + 1)
-    }
-
-    // 格式化错误信息
-    if (error.name === 'AbortError') {
-      throw new Error('请求超时，请检查网络连接或稍后重试')
-    } else if (error.message.includes('401')) {
-      throw new Error('API密钥无效，请检查配置')
-    } else if (error.message.includes('403')) {
-      throw new Error('访问被拒绝，请检查API权限')
-    } else if (error.message.includes('429')) {
-      throw new Error('请求过于频繁，请稍后重试')
-    } else if (error.message.includes('500')) {
-      throw new Error('服务器内部错误，请稍后重试')
-    } else {
-      throw new Error(`API调用失败: ${error.message}`)
-    }
+    console.error('魔搭API调用错误:', error)
+    throw error
   }
 }
 
