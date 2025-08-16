@@ -4,7 +4,7 @@
 // 魔搭API配置
 const MODELSCOPE_CONFIG = {
   baseURL: 'https://api-inference.modelscope.cn/v1',
-  model: 'Qwen/Qwen2.5-7B-Instruct',
+  model: 'Qwen/Qwen3-8B',
   apiKey: 'ms-150d583e-ed00-46d3-ab35-570f03555599'
 }
 
