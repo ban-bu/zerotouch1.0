@@ -1,0 +1,11 @@
+{
+  "buildTime": "2025-08-15T08:18:55.177Z",
+  "version": "0.0.0",
+  "buildSize": {
+    "size": 258308,
+    "files": 3
+  },
+  "environment": "production",
+  "nodeVersion": "v24.5.0",
+  "platform": "darwin"
+}

@@ -1,0 +1,39 @@
+# Railway 部署专用 Dockerfile
+# 为 Railway 平台优化的多阶段构建
+
+# 构建阶段
+FROM node:18-alpine AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制依赖文件
+COPY package*.json ./
+
+# 安装依赖
+RUN npm ci
+
+# 复制源代码
+COPY . .
+
+# 构建应用
+RUN npm run build
+
+# 生产阶段 - 使用 nginx 托管静态文件
+FROM nginx:alpine AS production
+
+# 创建 nginx 配置目录
+RUN mkdir -p /etc/nginx/templates
+
+# 复制 Railway 专用的 nginx 模板配置
+COPY nginx.railway.conf.template /etc/nginx/templates/default.conf.template
+
+# 从构建阶段复制构建产物
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Railway 会自动设置 PORT 环境变量
+# nginx 将监听该端口
+EXPOSE $PORT
+
+# 启动命令 - envsubst 会替换模板中的环境变量
+CMD ["sh", "-c", "envsubst '$PORT' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

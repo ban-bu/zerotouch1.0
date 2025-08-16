@@ -1,0 +1,73 @@
+# Railway 专用 Nginx 配置模板
+# 使用环境变量 $PORT 动态设置监听端口
+
+server {
+    # Railway 动态端口
+    listen $PORT;
+    listen [::]:$PORT;
+    server_name _;
+
+    # 根目录
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 启用gzip压缩
+    gzip on;
+    gzip_types 
+        text/plain 
+        text/css 
+        application/json 
+        application/javascript 
+        text/xml 
+        application/xml 
+        application/xml+rss 
+        text/javascript
+        application/atom+xml
+        image/svg+xml;
+    gzip_min_length 1000;
+    gzip_comp_level 6;
+    gzip_vary on;
+
+    # 安全相关头部
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # 静态资源缓存
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Vary "Accept-Encoding";
+        try_files $uri =404;
+    }
+
+    # API 代理（如果有后端服务）
+    location /api/ {
+        # 这里可以配置后端服务代理
+        # proxy_pass http://backend-service:port;
+        return 404; # 暂时返回404，可根据需要配置
+    }
+
+    # SPA 路由处理
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    # 健康检查端点
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    # 隐藏 nginx 版本信息
+    server_tokens off;
+
+    # 错误页面
+    error_page 404 /index.html;
+    error_page 500 502 503 504 /index.html;
+}
